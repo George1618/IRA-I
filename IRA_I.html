@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>IRA I</title>
+
+    <style>
+        * {
+            border: 0;
+            padding: 0;
+            margin: 0;
+            font-size: 4vh;
+            background: black;
+        }
+        body {
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            display: grid;
+            grid-template-rows: 2fr 1fr 24fr 1fr;
+        }
+        body > * {
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: white;
+        }
+        button {
+            cursor: pointer;
+        }
+
+        #pergunta, #acoes {
+            display: flex;
+            justify-content: space-around;
+        }
+        #pergunta > label {color: lightblue;}
+        #pergunta > input {
+            color: lightblue;
+            border: 1px solid lightblue;
+        }
+
+        #lista {
+            display: grid;
+            grid-template-columns: 1fr 6fr 1fr;
+        }
+        #esquerda, #direita {
+            background: none;
+            color: red;
+            border-radius: 50%;
+            height: 100%;
+            align-self: center;
+            justify-self: center;
+        }
+        #esquerda:disabled, #direita:disabled {
+            color: grey;
+        }
+        #carrosel {
+            margin-top: 2%;
+            height: calc(98% - 2px);
+            width: calc(100% - 2px);
+            border: 1px solid yellow;
+        }
+        #carrosel * {color: yellow; text-align: center; font-size: 2.5vh;}
+        #semestre {font-size: 4vh; height: 10%;}
+        #cabecalho, .item {
+            display: grid;
+            height: calc(5% - 1px);
+            border-bottom: 1px solid white;
+            grid-template-columns: repeat(4, 1fr);
+        }
+        #cabecalho p:nth-child(-n+3), .item input, .item p:first-child {
+            word-break: break-word;
+            border-right: 1px solid white;
+            width: calc(100% - 1px);
+            height: 100%;
+            overflow-y: auto;
+        }
+        #adicionar, .remover {
+            background: lime;
+            color: black;
+            width: 50%;
+            border-radius: 10%;
+        }
+        #disciplinas {
+            height: 85%;
+            overflow: auto;
+        }
+        #disciplinas .item {height: calc(15% - 1px); overflow: auto;}
+        #disciplinas .remover {background: red; color: white;}
+        #disciplinas .item * {color: white;}
+
+        #acoes > button {
+            width: 30%;
+            height: 90%;
+            color: lightgreen;
+            border: 1px solid lightgreen;
+        }
+
+        #opcoes {height: 70vh; width: 100%;}
+        #save_opt, #dele_opt {height: calc(10% - 20px); width: 80%; margin: 10px 0;}
+        #save_opt {background: lime;}
+        #dele_opt {background: red;}
+
+        #modal {
+            background: black;
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 100vw;
+            min-height: 100vh;
+            min-width: 100vw;
+            display: none;
+        }
+        #tipo {
+            display: flex; 
+            justify-content: space-between;
+        }
+        #titulo {color: cyan; text-align: center;}
+        #fechar {color: lightpink;}
+        #conteudo {
+            height: calc(90% - 1px);
+            width: 100%;
+            color: white;
+            border-top: 1px solid white;
+        }
+        #conteudo > * {
+            padding: 4% 4%;
+            height: 92%;
+            width: 92%;
+            overflow: auto;
+        }
+        #conteudo * {font-size: 3vh;}
+        li:nth-child(2n) {color: wheat;}
+        li::marker {
+            font-size: 3vh;
+            color: cyan;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Cálculo de IRA individual</h1>
+    <div id="pergunta">
+        <label for="semestres">Semestres cursados: </label>
+        <input type="number" min="1" max="16" step="1" value="1" id="semestres" oninput="semester(this)" />
+    </div>
+    <div id="lista">
+        <button id="esquerda" onclick="move(-1)" disabled="disabled"><</button>
+        <div id="carrosel">
+            <p id="semestre">1° Semestre</p>
+            <div id="cabecalho">
+                <p>Disciplina</p>
+                <p>Nota</p>
+                <p>Créditos</p>
+                <p><button id="adicionar" onclick="add()">+</button></p>
+            </div>
+            <div id="disciplinas"></div>
+        </div>
+        <button id="direita" onclick="move(1)" disabled="disabled">></button>
+    </div>
+    <div id="acoes">
+        <button onclick="help()">Ajuda</button>
+        <button onclick="calc()">Calcular</button>
+        <button onclick="opts()">Opções</button>
+    </div>
+    <div id="modal">
+        <div id="tipo">
+            <h1 id="titulo"></h1>
+            <button id="fechar" onclick="exit()">X</button>
+        </div>
+        <div id="conteudo"></div>
+    </div>
+    <script>
+        function elemento(tipo, pai=null, props={}) {
+            let el = document.createElement(tipo);
+            if (pai!==null) pai.appendChild(el);
+            Object.keys(props).forEach(prop => el[prop]=props[prop]);
+            return el;
+        }
+        function limpar(elemento) {
+            while (elemento.firstChild) elemento.firstChild.remove();
+        }
+
+        const modal = document.getElementById('modal');
+        const titulo = document.getElementById('titulo');
+        const conteudo = document.getElementById('conteudo');
+
+        function open(ttl, cnt) {
+            modal.style.display = 'block';
+            titulo.textContent = ttl;
+            limpar(conteudo);
+            conteudo.appendChild(cnt);
+        }
+        function exit() {
+            modal.style.display = 'none';
+        }
+
+        const esquerda = document.getElementById('esquerda');
+        const direita = document.getElementById('direita');
+        const semestre = document.getElementById('semestre');
+        const disciplinas = document.getElementById('disciplinas');
+
+        let smst = 1, index = 1;
+        let semesters = [];
+        function i() {return index-1;}
+
+        function disc(name, grade, cred) {
+            return {name, grade, cred};
+        }
+
+        function add(disc, pos) {
+            let semi = i();
+            if (!disc) {
+                disc = {name: 'Nova Disciplina', grade: 0, cred: 0};
+                pos = semesters[semi].length;
+                semesters[semi].push(disc);
+            }
+            let row = elemento('div', disciplinas, {className: 'item', id: 'item_'+pos});
+            elemento('p', row, {contentEditable: true, textContent: disc.name, 
+                oninput: ({target}) => {semesters[semi][pos].name = target.value;}
+            });
+            elemento('input', row, {value: disc.grade===null ? 'T' : disc.grade, 
+                oninput: ({target}) => {
+                    let val = target.value, isT = val[0]==='T' || val[0]==='t';
+                    semesters[semi][pos].grade = isT ? null : parseFloat(val);
+                }
+            });
+            elemento('input', row, {type: 'number', min: 1, step: 1, value: disc.cred, 
+                oninput: ({target}) => {semesters[semi][pos].cred = parseInt(target.value);}
+            });
+            let last = elemento('p', row);
+            elemento('button', last, {className: 'remover', onclick: () => {
+                row.remove();
+                semesters[semi].splice(pos, 1);
+            }, textContent: '🗑'});
+        }
+
+        function check() {
+            esquerda.disabled= index>1 ? '' : 'disabled';
+            direita.disabled= smst>1 && index<smst ? '' : 'disabled';
+        }
+        function move(desl) {
+            let nidx = index+desl;
+            if ((desl>0 && nidx<=smst) || (desl<=0 && nidx>=1)) {
+                index = nidx;
+                discs = semesters[i()];
+                semestre.textContent = index+"° Semestre";
+                limpar(disciplinas);
+                discs.forEach((disc, pos) => add(disc, pos));
+                check();
+            } 
+        }
+
+        function semester(sem) {
+            let n = parseInt(sem.value);
+            let text = null;
+            if (n<1) {n=1; text = "É preciso ter cursado no mínimo 1 semestre!";}
+            if (n>16) {n=16; text = "Máximo de 16 semestres permitido.";}
+            sem.value = n;
+
+            if (smst>n) {
+                semesters.splice(smst+1, smst-n);
+                if (index>n) {index=n; move(0);}
+            } else if (smst<n) {
+                for (let i=n-smst; i>0; i--) {semesters.push([]);}
+            }
+
+            smst = n;
+            check();
+
+            if (text) {alert(text);}
+        }
+
+        const tips = [
+            'Inicie digitando o número de semestres que você cursou.',
+            'Não inclua semestres incompletos ou não-iniciados, a não ser que queira fazer previsões.',
+            'O bloco do 1º semestre é mostrado no centro, inicialmente vazio.',
+            'Clique no botão verde "+" para adicionar uma disciplina ao semestre mostrado, e edite os campos com os seus dados.', 
+            'Para remover uma disciplina extra (ou incorreta), clique no botão vermelho "🗑" (mas prefira editar se for erro nos campos).',
+            'O campo Disciplina serve apenas para organizar a sua lista e portanto não há obrigações sobre ele.',
+            'Há obrigações sobre o campo de nota: como padrão, ela varia de 0 a 10 e pode ser um número quebrado (ex.: 7,6).',
+            'Se você tiver trancado uma disciplina, é NECESSÁRIO inseri-la com nota começando com "T" ou "t" ("T", "trancada", "Tranquei", etc.).',
+            'Para preencher outros semestres, use as setas de navegação ("<" para o semestre anterior, ">" para o próximo). As setas devem estar vermelhas para navegar.',
+            'Uma vez terminado, clique em Calcular para ver seu IRA individual.',
+            'Caso você pretenda calcular os próximos IRAs, é recomendo salvar os dados usados, para não ter que digitá-los novamente.',
+            'Para salvar seus dados, vá em Opções → Salvar dados.',
+            'Para limpar os dados salvos do seu navegador, vá em Opções → Limpar dados.'
+        ];
+        const hint = elemento('ul');
+        tips.forEach(tip => elemento('li', hint, {textContent: tip}));
+        function help() {
+            open('Ajuda', hint);
+        }
+
+        const ira_m = elemento('div');
+        const ira_text = elemento('p', ira_m, {textContent: 'O seu IRA individual é:'});
+        const ira_calc = elemento('p', ira_m);
+        function calc() {
+            let trancadas = [];
+            let cursadas = semesters.reduce((cur, sem, i) => {
+                sem.forEach(di => {
+                    if (di.grade===null) trancadas.push({carga: di.cred});
+                    else cur.push({periodo: i+1, carga: di.cred, nota: di.grade});
+                });
+                return cur;
+            }, []);
+
+            let perda = 0, total = 0;
+            let soma = 0, n = 0;
+            for (let i=0; i<trancadas.length; i++) {
+                perda+=trancadas[i].carga;
+            }
+            total = perda;
+            for (let i=0; i<cursadas.length; i++) {
+                let {periodo, carga, nota} = cursadas[i];
+                if (periodo>6) periodo = 6;
+                let peso = periodo*carga;
+                total+= carga;
+                soma+= (peso*nota);
+                n+= peso;
+            }
+            if (total==0) total=1;
+            if (n==0) n=1;
+            let res = (2-(perda/total))*(soma/n)*0.5;
+
+            ira_calc.textContent = res;
+            open('IRA', ira_m);
+            ira_calc.style.color = res>=7 ? 'lime' : (res<5 ? 'red' : 'yellow');
+        }
+
+        const options = elemento('div', null, {id: 'opcoes'});
+        const save = elemento('button', options, {onclick: () => {
+            localStorage.setItem('ira_i_g1618', JSON.stringify(semesters));
+            alert('Dados salvos com sucesso!');
+        }, textContent: 'Salvar dados', id: 'save_opt'});
+        const dele = elemento('button', options, {onclick: () => {
+            localStorage.removeItem('ira_i_g1618');
+            alert('Dados removidos com sucesso!');
+        }, textContent: 'Limpar dados', id: 'dele_opt'});
+        function opts() {
+            open('Opções', options);
+        }
+
+        let saved = localStorage.getItem('ira_i_g1618');
+        semesters = saved ? JSON.parse(saved) : [[]];
+        document.getElementById('semestres').value = smst = semesters.length;
+        move(0);
+
+    </script>
+</body>
+</html>
