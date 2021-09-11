@@ -234,7 +234,7 @@
             elemento('input', row, {value: disc.grade===null ? 'T' : disc.grade, 
                 oninput: ({target}) => {
                     let val = target.value, isT = val[0]==='T' || val[0]==='t';
-                    semesters[semi][pos].grade = isT ? null : parseFloat(val);
+                    semesters[semi][pos].grade = isT ? null : parseFloat(val.replace(',', '.'));
                 }
             });
             elemento('input', row, {type: 'number', min: 1, step: 1, value: disc.cred, 
