@@ -216,10 +216,6 @@
         let semesters = [];
         function i() {return index-1;}
 
-        function disc(disn, grade, cred) {
-            return {disn, grade, cred};
-        }
-
         function add(disc, pos) {
             let semi = i();
             if (!disc) {
@@ -229,7 +225,7 @@
             }
             let row = elemento('div', disciplinas, {className: 'item', id: 'item_'+pos});
             elemento('p', row, {contentEditable: true, textContent: disc.disn, 
-                oninput: ({target}) => {semesters[semi][pos].disn = target.value;}
+                oninput: ({target}) => {semesters[semi][pos].disn = target.textContent;}
             });
             elemento('input', row, {value: disc.grade===null ? 'T' : disc.grade, 
                 oninput: ({target}) => {
